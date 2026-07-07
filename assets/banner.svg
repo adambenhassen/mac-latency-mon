@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-label="LatencyMon — a monochrome macOS menu-bar latency monitor">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d0f12"/>
+      <stop offset="1" stop-color="#1a1d22"/>
+    </linearGradient>
+    <style>
+      .title { font: 700 68px -apple-system, "SF Pro Display", Segoe UI, Roboto, Helvetica, Arial, sans-serif; fill: #ffffff; }
+      .tag   { font: 400 26px -apple-system, "SF Pro Text", Segoe UI, Roboto, Helvetica, Arial, sans-serif; fill: #9aa0a6; }
+      .mono  { font: 600 22px ui-monospace, "SF Mono", Menlo, Consolas, monospace; fill: #ffffff; }
+      .big   { font: 600 26px ui-monospace, "SF Mono", Menlo, Consolas, monospace; fill: #ffffff; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="320" fill="url(#bg)"/>
+
+  <!-- faux menu bar strip -->
+  <rect x="0" y="0" width="1280" height="44" fill="#000000" opacity="0.55"/>
+  <g transform="translate(1108,13)" class="mono">
+    <text x="0" y="16">24ms</text>
+    <!-- monochrome caution triangle -->
+    <g transform="translate(80,0)" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linejoin="round">
+      <path d="M9 1 L17 16 L1 16 Z"/>
+      <line x1="9" y1="6" x2="9" y2="11" stroke-linecap="round"/>
+      <circle cx="9" cy="14" r="0.9" fill="#ffffff" stroke="none"/>
+    </g>
+  </g>
+
+  <text x="96" y="176" class="title">LatencyMon</text>
+  <text x="98" y="222" class="tag">A monochrome macOS menu-bar latency monitor.</text>
+
+  <!-- big latency pill -->
+  <g transform="translate(96,250)">
+    <rect x="0" y="0" width="150" height="46" rx="10" fill="#ffffff" opacity="0.06" stroke="#ffffff" stroke-opacity="0.14"/>
+    <text x="24" y="31" class="big">24ms</text>
+  </g>
+</svg>

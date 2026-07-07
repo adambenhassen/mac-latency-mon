@@ -1,0 +1,7 @@
+# Build artifacts
+LatencyMon
+LatencyMon.app/
+*.o
+
+# macOS
+.DS_Store
