@@ -2,6 +2,7 @@
 LatencyMon
 LatencyMon.app/
 *.o
+*.zip
 
 # macOS
 .DS_Store
