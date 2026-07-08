@@ -6,6 +6,8 @@
     <string>LatencyMon</string>
     <key>CFBundleExecutable</key>
     <string>LatencyMon</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>com.local.latencymon</string>
     <key>CFBundlePackageType</key>

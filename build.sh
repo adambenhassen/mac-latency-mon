@@ -12,9 +12,10 @@ lipo -create LatencyMon-arm64 LatencyMon-x86_64 -output LatencyMon
 rm -f LatencyMon-arm64 LatencyMon-x86_64
 
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp LatencyMon "$APP/Contents/MacOS/LatencyMon"
 cp Info.plist "$APP/Contents/Info.plist"
+cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 rm -f LatencyMon
 
 echo "Built universal $APP ($(lipo -archs "$APP/Contents/MacOS/LatencyMon")) — run:  open $APP"

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="LatencyMon app icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b1e23"/>
+      <stop offset="1" stop-color="#0a0b0d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- squircle body: macOS icon grid (824x824 within 1024, r=185) -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <ellipse cx="512" cy="512" rx="360" ry="360" fill="url(#glow)"/>
+
+  <!-- concentric ping rings emanating from a center node -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="round">
+    <circle cx="512" cy="512" r="120" stroke-width="26" stroke-opacity="0.60"/>
+    <circle cx="512" cy="512" r="212" stroke-width="24" stroke-opacity="0.34"/>
+    <circle cx="512" cy="512" r="304" stroke-width="22" stroke-opacity="0.16"/>
+  </g>
+  <circle cx="512" cy="512" r="46" fill="#ffffff" fill-opacity="0.95"/>
+
+  <!-- subtle top edge highlight for depth -->
+  <rect x="100.75" y="100.75" width="822.5" height="822.5" rx="184.5" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1.5"/>
+</svg>
