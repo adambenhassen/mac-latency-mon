@@ -4,6 +4,58 @@ import ServiceManagement
 let kIP = "targetIP"
 let kInterval = "intervalSeconds"
 
+/// Bar sparkline of recent RTTs. nil = timeout, drawn as a red baseline tick.
+final class SparklineView: NSView {
+    var samples: [Int?] = [] { didSet { needsDisplay = true } }
+    let capacity = 60
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard !samples.isEmpty else { return }
+        // 21pt left = standard menu-item text indent; 14pt right ≈ trailing text margin
+        let plot = NSRect(x: 21, y: bounds.minY + 6,
+                          width: bounds.width - 21 - 14, height: bounds.height - 12)
+        let labelBand: CGFloat = 12               // reserved strip for the peak label
+        let barTop = plot.height - labelBand      // bars never enter the label band
+        let slot = plot.width / CGFloat(capacity)
+        let barW = max(1, (slot - 1).rounded(.down))   // pixel-aligned, 1px gap
+        let peakMs = samples.compactMap { $0 }.max() ?? 1
+        let peak = CGFloat(peakMs)
+
+        // baseline hairline
+        NSColor.separatorColor.setFill()
+        NSRect(x: plot.minX, y: plot.minY - 1, width: plot.width, height: 1).fill()
+
+        // faint peak guide + label, so the scale is readable at a glance
+        NSColor.separatorColor.withAlphaComponent(0.5).setFill()
+        NSRect(x: plot.minX, y: plot.minY + barTop, width: plot.width, height: 1).fill()
+        let labelAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ]
+        let peakLabel = NSAttributedString(string: "\(peakMs) ms", attributes: labelAttrs)
+        peakLabel.draw(at: NSPoint(x: plot.maxX - peakLabel.size().width,
+                                   y: plot.minY + barTop + 1))
+
+        let lastIndex = samples.count - 1
+        for (i, s) in samples.enumerated() {
+            let x = (plot.minX + CGFloat(i) * slot).rounded()
+            if let ms = s {
+                // sqrt scale: keeps normal jitter readable when one spike dominates
+                let h = max(3, (barTop * sqrt(CGFloat(ms) / max(peak, 1))).rounded())
+                let color = (i == lastIndex) ? NSColor.controlAccentColor
+                                             : NSColor.labelColor.withAlphaComponent(0.55)
+                color.setFill()
+                NSBezierPath(roundedRect: NSRect(x: x, y: plot.minY, width: barW, height: h),
+                             xRadius: 1, yRadius: 1).fill()
+            } else {
+                NSColor.systemRed.setFill()
+                NSBezierPath(roundedRect: NSRect(x: x, y: plot.minY, width: barW, height: 3),
+                             xRadius: 1, yRadius: 1).fill()
+            }
+        }
+    }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var timer: Timer?
@@ -19,6 +71,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     private var isPinging = false
 
+    // Stats since launch / reset
+    private var okCount = 0
+    private var timeoutCount = 0
+    private var sumMs = 0
+    private var minMs: Int?
+    private var maxMs: Int?
+    private var latencyItem: NSMenuItem!
+    private var lossItem: NSMenuItem!
+    private let sparkline = SparklineView(frame: NSRect(x: 0, y: 0, width: 240, height: 48))
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.title = "…"
@@ -31,9 +93,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func buildMenu() {
         let menu = NSMenu()
-        let header = NSMenuItem(title: "Target: \(ip)", action: nil, keyEquivalent: "")
+        let header = NSMenuItem(title: "", action: nil, keyEquivalent: "")
         header.isEnabled = false
+        setStat(header, "Target: \(ip)")
         menu.addItem(header)
+        menu.addItem(.separator())
+        latencyItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        latencyItem.isEnabled = false
+        menu.addItem(latencyItem)
+        lossItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        lossItem.isEnabled = false
+        menu.addItem(lossItem)
+        updateStatsItems()
+        let chartItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        sparkline.autoresizingMask = [.width]   // stretch to actual menu width
+        chartItem.view = sparkline
+        menu.addItem(chartItem)
+        menu.addItem(NSMenuItem(title: "Reset Stats", action: #selector(resetStats), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Set IP…", action: #selector(setIP), keyEquivalent: "s"))
 
@@ -71,8 +147,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
         if alert.runModal() == .alertFirstButtonReturn {
             let v = field.stringValue.trimmingCharacters(in: .whitespaces)
-            if !v.isEmpty { ip = v; buildMenu(); restartTimer() }
+            if !v.isEmpty { ip = v; resetStats(); buildMenu(); restartTimer() }
         }
+    }
+
+    // MARK: - Stats
+
+    @objc private func resetStats() {
+        okCount = 0; timeoutCount = 0; sumMs = 0; minMs = nil; maxMs = nil
+        sparkline.samples = []
+        updateStatsItems()
+    }
+
+    private func record(_ ms: Int?) {
+        if let ms = ms {
+            okCount += 1
+            sumMs += ms
+            minMs = min(minMs ?? ms, ms)
+            maxMs = max(maxMs ?? ms, ms)
+        } else {
+            timeoutCount += 1
+        }
+        sparkline.samples.append(ms)
+        if sparkline.samples.count > sparkline.capacity {
+            sparkline.samples.removeFirst(sparkline.samples.count - sparkline.capacity)
+        }
+        updateStatsItems()
+    }
+
+    /// Disabled menu items render gray; attributed titles keep them label-colored.
+    private func setStat(_ item: NSMenuItem, _ text: String) {
+        item.attributedTitle = NSAttributedString(string: text, attributes: [
+            // full alpha: labelColor is ~85% opaque and reads dim on disabled items
+            .foregroundColor: NSColor.labelColor.withAlphaComponent(1),
+            .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular),
+        ])
+    }
+
+    private func updateStatsItems() {
+        let total = okCount + timeoutCount
+        if total == 0 {
+            setStat(latencyItem, "No samples yet")
+            lossItem.isHidden = true
+            return
+        }
+        lossItem.isHidden = false
+        if let mn = minMs, let mx = maxMs, okCount > 0 {
+            setStat(latencyItem, "Min \(mn) · Avg \(sumMs / okCount) · Max \(mx) ms")
+        } else {
+            setStat(latencyItem, "No replies yet")
+        }
+        let lossPct = Int((Double(timeoutCount) / Double(total) * 100).rounded())
+        setStat(lossItem, "Loss \(lossPct)% (\(timeoutCount)/\(total))")
     }
 
     @objc private func setInterval(_ sender: NSMenuItem) {
@@ -117,6 +243,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func render(_ ms: Int?) {
+        record(ms)
         guard let button = statusItem.button else { return }
         if let ms = ms {
             button.image = nil
