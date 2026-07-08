@@ -79,6 +79,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var maxMs: Int?
     private var latencyItem: NSMenuItem!
     private var lossItem: NSMenuItem!
+    private var latencyField: NSTextField!
+    private var lossField: NSTextField!
     private let sparkline = SparklineView(frame: NSRect(x: 0, y: 0, width: 240, height: 48))
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -93,16 +95,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func buildMenu() {
         let menu = NSMenu()
-        let header = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        header.isEnabled = false
-        setStat(header, "Target: \(ip)")
+        let (header, headerField) = Self.labelItem()
+        headerField.stringValue = "Target: \(ip)"
         menu.addItem(header)
         menu.addItem(.separator())
-        latencyItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        latencyItem.isEnabled = false
+        (latencyItem, latencyField) = Self.labelItem()
         menu.addItem(latencyItem)
-        lossItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        lossItem.isEnabled = false
+        (lossItem, lossField) = Self.labelItem()
         menu.addItem(lossItem)
         updateStatsItems()
         let chartItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -175,30 +174,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateStatsItems()
     }
 
-    /// Disabled menu items render gray; attributed titles keep them label-colored.
-    private func setStat(_ item: NSMenuItem, _ text: String) {
-        item.attributedTitle = NSAttributedString(string: text, attributes: [
-            // full alpha: labelColor is ~85% opaque and reads dim on disabled items
-            .foregroundColor: NSColor.labelColor.withAlphaComponent(1),
-            .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular),
-        ])
+    /// The system dims action-less menu items regardless of attributed-title
+    /// color, so stat rows are view-backed with a text field we fully control.
+    private static func labelItem() -> (NSMenuItem, NSTextField) {
+        let field = NSTextField(labelWithString: "")
+        field.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        field.textColor = .labelColor
+        // 21pt left indent / 14pt right margin match standard menu-item text
+        field.frame = NSRect(x: 21, y: 2, width: 240 - 21 - 14, height: 17)
+        field.autoresizingMask = [.width]
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: 21))
+        view.autoresizingMask = [.width]
+        view.addSubview(field)
+        let item = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        item.view = view
+        return (item, field)
     }
 
     private func updateStatsItems() {
         let total = okCount + timeoutCount
         if total == 0 {
-            setStat(latencyItem, "No samples yet")
+            latencyField.stringValue = "No samples yet"
             lossItem.isHidden = true
             return
         }
         lossItem.isHidden = false
         if let mn = minMs, let mx = maxMs, okCount > 0 {
-            setStat(latencyItem, "Min \(mn) · Avg \(sumMs / okCount) · Max \(mx) ms")
+            latencyField.stringValue = "Min \(mn) · Avg \(sumMs / okCount) · Max \(mx) ms"
         } else {
-            setStat(latencyItem, "No replies yet")
+            latencyField.stringValue = "No replies yet"
         }
         let lossPct = Int((Double(timeoutCount) / Double(total) * 100).rounded())
-        setStat(lossItem, "Loss \(lossPct)% (\(timeoutCount)/\(total))")
+        lossField.stringValue = "Loss \(lossPct)% (\(timeoutCount)/\(total))"
     }
 
     @objc private func setInterval(_ sender: NSMenuItem) {
