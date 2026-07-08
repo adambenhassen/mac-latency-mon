@@ -13,6 +13,8 @@ Built for glancing at SSH connection health on a train — `24ms` when the link 
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
+**[Homepage](https://adambenhassen.github.io/mac-latency-mon/)** · **[Download](https://github.com/adambenhassen/mac-latency-mon/releases/latest)**
+
 </div>
 
 ## Features
